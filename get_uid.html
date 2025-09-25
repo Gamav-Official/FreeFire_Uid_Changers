@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Get UID</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f4f4f4;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 60px 20px;
+    }
+
+    h2 {
+      font-size: 32px;
+      color: #333;
+      margin-bottom: 30px;
+    }
+
+    .warning {
+      background-color: #ffe6e6;
+      color: #b30000;
+      border: 1px solid #ffcccc;
+      padding: 15px 25px;
+      border-radius: 6px;
+      font-weight: bold;
+      margin-bottom: 30px;
+    }
+
+    input[type="file"],
+    input[type="number"] {
+      margin: 15px 0;
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      width: 250px;
+      box-sizing: border-box;
+    }
+
+    button {
+      margin-top: 25px;
+      padding: 12px 24px;
+      font-size: 16px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    button:disabled {
+      background-color: #aaa;
+      cursor: not-allowed;
+    }
+
+    button:hover:enabled {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Get UID</h2>
+
+  <div class="warning">
+    Don't Upload ProjectData_slot_1.bytes File
+  </div>
+
+  <input type="file" id="fileInput" accept=".bytes">
+  <br>
+  <input type="number" id="numberInput" placeholder="Enter number">
+  <br>
+  <button id="downloadBtn" disabled>Download UID File</button>
+
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const numberInput = document.getElementById('numberInput');
+    const downloadBtn = document.getElementById('downloadBtn');
+
+    let extractedBytes = null;
+
+    fileInput.addEventListener('change', handleFileUpload);
+    numberInput.addEventListener('input', validate);
+
+    function handleFileUpload() {
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const buffer = new Uint8Array(e.target.result);
+        extractedBytes = null;
+
+        for (let i = buffer.length - 7; i >= 0; i--) {
+          if (buffer[i] === 0x38 && buffer[i + 6] === 0x42) {
+            extractedBytes = buffer.slice(i + 1, i + 6);
+            break;
+          }
+        }
+
+        if (!extractedBytes) {
+          alert("Pattern not found in the file.");
+        }
+
+        validate();
+      };
+
+      reader.readAsArrayBuffer(file);
+    }
+
+    function validate() {
+      const numberValue = numberInput.value.trim();
+      downloadBtn.disabled = !(extractedBytes && numberValue.length >= 8);
+    }
+
+    downloadBtn.addEventListener('click', () => {
+      const hexString = Array.from(extractedBytes).map(b => b.toString(16).padStart(2, '0')).join(' ').toUpperCase();
+      const blob = new Blob([hexString], { type: 'text/plain' });
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = numberInput.value + '.txt';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  </script>
+  <div style="margin-top: 50px; text-align: center; font-weight: bold; color: #444;">
+  LAG FF LE MOOT DIYA TUGHPE AUR TERE BOT PE
+</div>
+</body>
+</html>
