@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Edit UID</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f4f4f4;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 60px 20px;
+    }
+
+    h2 {
+      font-size: 32px;
+      color: #333;
+      margin-bottom: 30px;
+    }
+
+    .warning {
+      background-color: #ffe6e6;
+      color: #b30000;
+      border: 1px solid #ffcccc;
+      padding: 15px 25px;
+      border-radius: 6px;
+      font-weight: bold;
+      margin-bottom: 30px;
+      text-align: center;
+    }
+
+    label {
+      font-weight: bold;
+      margin-top: 20px;
+      display: block;
+    }
+
+    input[type="file"] {
+      margin-top: 10px;
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      width: 280px;
+    }
+
+    button {
+      margin-top: 40px;
+      padding: 12px 30px;
+      font-size: 16px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    button:disabled {
+      background-color: #aaa;
+      cursor: not-allowed;
+    }
+
+    button:hover:enabled {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Edit UID</h2>
+
+  <div class="warning">
+    Don't Upload ProjectData_slot_1.bytes File
+  </div>
+
+  <label for="uidFile">Upload UID File (.txt only)</label>
+  <input type="file" id="uidFile" accept=".txt">
+
+  <label for="mapFile">Upload Map File (.bytes only)</label>
+  <input type="file" id="mapFile" accept=".bytes">
+
+  <button id="downloadBtn" disabled>Download Modified File</button>
+
+  <script>
+    const uidFileInput = document.getElementById('uidFile');
+    const mapFileInput = document.getElementById('mapFile');
+    const downloadBtn = document.getElementById('downloadBtn');
+
+    let uidBytes = null;
+    let modifiedMapBuffer = null;
+    let originalMapFileName = '';
+
+    uidFileInput.addEventListener('change', handleUIDUpload);
+    mapFileInput.addEventListener('change', handleMapUpload);
+    downloadBtn.addEventListener('click', downloadModifiedFile);
+
+    function handleUIDUpload() {
+      const file = uidFileInput.files[0];
+      if (!file) return;
+
+      if (!file.name.toLowerCase().endsWith('.txt')) {
+        alert("Only .txt files are allowed for UID File.");
+        uidFileInput.value = "";
+        uidBytes = null;
+        validateDownload();
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const text = e.target.result.trim();
+        const hexArray = text.split(' ');
+
+        if (hexArray.length !== 5) {
+          alert("UID file must contain exactly 5 hex bytes.");
+          uidBytes = null;
+          validateDownload();
+          return;
+        }
+
+        try {
+          uidBytes = new Uint8Array(hexArray.map(h => parseInt(h, 16)));
+          validateDownload();
+        } catch {
+          alert("Invalid hex format in UID file.");
+          uidBytes = null;
+          validateDownload();
+        }
+      };
+
+      reader.readAsText(file);
+    }
+
+    function handleMapUpload() {
+      const file = mapFileInput.files[0];
+      if (!file) return;
+
+      if (!file.name.toLowerCase().endsWith('.bytes')) {
+        alert("Only .bytes files are allowed for Map File.");
+        mapFileInput.value = "";
+        modifiedMapBuffer = null;
+        validateDownload();
+        return;
+      }
+
+      originalMapFileName = file.name;
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const buffer = new Uint8Array(e.target.result);
+        let replaced = false;
+
+        for (let i = buffer.length - 7; i >= 0; i--) {
+          if (buffer[i] === 0x38 && buffer[i + 6] === 0x42) {
+            if (!uidBytes) {
+              alert("Please upload a valid UID file first.");
+              return;
+            }
+
+            for (let j = 0; j < 5; j++) {
+              buffer[i + 1 + j] = uidBytes[j];
+            }
+
+            modifiedMapBuffer = buffer;
+            replaced = true;
+            break;
+          }
+        }
+
+        if (!replaced) {
+          alert("Pattern not found in map file.");
+          modifiedMapBuffer = null;
+        }
+
+        validateDownload();
+      };
+
+      reader.readAsArrayBuffer(file);
+    }
+
+    function validateDownload() {
+      downloadBtn.disabled = !(uidBytes && modifiedMapBuffer);
+    }
+
+    function downloadModifiedFile() {
+      if (!modifiedMapBuffer) return;
+
+      const blob = new Blob([modifiedMapBuffer], { type: 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const modifiedName = 'modified_' + originalMapFileName.replace(/[^a-zA-Z0-9._-]/g, '');
+      a.href = url;
+      a.download = modifiedName;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  </script>
+  <div style="margin-top: 50px; text-align: center; font-weight: bold; color: #444;">
+  LAG FF LE MOOT DIYA TUGHPE AUR TERE BOT PE
+</div>
+</body>
+</html>
